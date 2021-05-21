@@ -110,6 +110,15 @@ export default {
         variants: {
             type: Array,
             required: true
+        },
+        submit_url: {
+            required: true
+        },
+        url: {
+            required: false
+        },
+        product: {
+            required: false
         }
     },
     data() {
@@ -118,9 +127,10 @@ export default {
             product_sku: '',
             description: '',
             images: [],
+            product_id : '',
             product_variant: [
                 {
-                    option: this.variants[0].id,
+                    option: '',
                     tags: []
                 }
             ],
@@ -149,19 +159,26 @@ export default {
 
         // check the variant and render all the combination
         checkVariant() {
-            let tags = [];
-            this.product_variant_prices = [];
-            this.product_variant.filter((item) => {
-                tags.push(item.tags);
-            })
+            let tags        = [];
+            let variant_id  = [];
 
-            this.getCombn(tags).forEach(item => {
+            this.product_variant_prices = [];
+
+            this.product_variant.filter((item, key) => {
+                tags.push(item.tags);
+                Object.values(item.tags).forEach(tag=>{
+                    variant_id.push(item.option);
+                });
+            });
+
+            this.getCombn(tags).forEach((item, key) => {
                 this.product_variant_prices.push({
-                    title: item,
-                    price: 0,
-                    stock: 0
-                })
-            })
+                    variant_id  : variant_id[key],
+                    title       : item,
+                    price       : 0,
+                    stock       : 0
+                });
+            });
         },
 
         // combination algorithm
@@ -185,23 +202,62 @@ export default {
                 description: this.description,
                 product_image: this.images,
                 product_variant: this.product_variant,
-                product_variant_prices: this.product_variant_prices
+                product_variant_prices: this.product_variant_prices,
+                product_id : this.product_id
             }
-
-
-            axios.post('/product', product).then(response => {
-                console.log(response.data);
+            axios.post(this.submit_url, product).then(response => {
+                if(response.data==1){
+                    window.location.href = this.url+'/product';
+                }
+                else {
+                    alert('This Product Already Exists!!');
+                }
             }).catch(error => {
                 console.log(error);
             })
 
-            console.log(product);
         }
 
 
     },
     mounted() {
-        console.log('Component mounted.')
+        this.option = ((this.variants).length > 0 ? this.variants[0].id : '');
+        if(this.product){
+            this.product_name = (this.product).title;
+            this.product_sku  = (this.product).sku;
+            this.description  = (this.product).description;
+
+            this.product_id = (this.product).id;
+
+            axios.post(this.url+'/product/variants', {product_id:(this.product).id})
+            .then((response)=>{
+                if((response.data).length>0){
+                    this.product_variant = [];
+                    Object.values(response.data).forEach((item)=>{
+
+                        var available = false;
+                        Object.values(this.product_variant).forEach((variant)=>{
+                            if(item.variant_id == variant.option)
+                                available=true;
+                        });
+
+                        if(!available){
+                            this.product_variant.push({
+                                option: item.variant_id,
+                                tags: [item.variant]
+                            });
+                        }
+                        // product_variant_prices
+                        this.product_variant_prices.push({
+                            variant_id : item.variant_id,
+                            title      : item.variant,
+                            price      : item.price,
+                            stock      : item.stock
+                        })
+                    });
+                }
+            }).catch(error => console.log(error));
+        }
     }
 }
 </script>

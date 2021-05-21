@@ -2024,6 +2024,15 @@ __webpack_require__.r(__webpack_exports__);
     variants: {
       type: Array,
       required: true
+    },
+    submit_url: {
+      required: true
+    },
+    url: {
+      required: false
+    },
+    product: {
+      required: false
     }
   },
   data: function data() {
@@ -2032,8 +2041,9 @@ __webpack_require__.r(__webpack_exports__);
       product_sku: '',
       description: '',
       images: [],
+      product_id: '',
       product_variant: [{
-        option: this.variants[0].id,
+        option: '',
         tags: []
       }],
       product_variant_prices: [],
@@ -2072,12 +2082,17 @@ __webpack_require__.r(__webpack_exports__);
       var _this = this;
 
       var tags = [];
+      var variant_id = [];
       this.product_variant_prices = [];
-      this.product_variant.filter(function (item) {
+      this.product_variant.filter(function (item, key) {
         tags.push(item.tags);
+        Object.values(item.tags).forEach(function (tag) {
+          variant_id.push(item.option);
+        });
       });
-      this.getCombn(tags).forEach(function (item) {
+      this.getCombn(tags).forEach(function (item, key) {
         _this.product_variant_prices.push({
+          variant_id: variant_id[key],
           title: item,
           price: 0,
           stock: 0
@@ -2100,24 +2115,69 @@ __webpack_require__.r(__webpack_exports__);
     },
     // store product into database
     saveProduct: function saveProduct() {
+      var _this2 = this;
+
       var product = {
         title: this.product_name,
         sku: this.product_sku,
         description: this.description,
         product_image: this.images,
         product_variant: this.product_variant,
-        product_variant_prices: this.product_variant_prices
+        product_variant_prices: this.product_variant_prices,
+        product_id: this.product_id
       };
-      axios.post('/product', product).then(function (response) {
-        console.log(response.data);
+      axios.post(this.submit_url, product).then(function (response) {
+        if (response.data == 1) {
+          window.location.href = _this2.url + '/product';
+        } else {
+          alert('This Product Already Exists!!');
+        }
       })["catch"](function (error) {
         console.log(error);
       });
-      console.log(product);
     }
   },
   mounted: function mounted() {
-    console.log('Component mounted.');
+    var _this3 = this;
+
+    this.option = this.variants.length > 0 ? this.variants[0].id : '';
+
+    if (this.product) {
+      this.product_name = this.product.title;
+      this.product_sku = this.product.sku;
+      this.description = this.product.description;
+      this.product_id = this.product.id;
+      axios.post(this.url + '/product/variants', {
+        product_id: this.product.id
+      }).then(function (response) {
+        if (response.data.length > 0) {
+          _this3.product_variant = [];
+          Object.values(response.data).forEach(function (item) {
+            var available = false;
+            Object.values(_this3.product_variant).forEach(function (variant) {
+              if (item.variant_id == variant.option) available = true;
+            });
+
+            if (!available) {
+              _this3.product_variant.push({
+                option: item.variant_id,
+                tags: [item.variant]
+              });
+            } // product_variant_prices
+
+
+            _this3.product_variant_prices.push({
+              variant_id: item.variant_id,
+              title: item.variant,
+              price: item.price,
+              stock: item.stock
+            });
+          });
+        }
+      })["catch"](function (error) {
+        return console.log(error);
+      });
+    }
   }
 });
 
@@ -63300,8 +63360,8 @@ __webpack_require__.r(__webpack_exports__);
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! /home/rifat/Programming/mediusware/interview/interview-question-sr/resources/js/app.js */"./resources/js/app.js");
-module.exports = __webpack_require__(/*! /home/rifat/Programming/mediusware/interview/interview-question-sr/resources/sass/app.scss */"./resources/sass/app.scss");
+__webpack_require__(/*! E:\Server-7.4\htdocs\code_test\resources\js\app.js */"./resources/js/app.js");
+module.exports = __webpack_require__(/*! E:\Server-7.4\htdocs\code_test\resources\sass\app.scss */"./resources/sass/app.scss");
 
 
 /***/ })
